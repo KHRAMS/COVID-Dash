@@ -47,13 +47,13 @@ class CoronaStats:
         return self.df.loc[self.df['Country,Other'] == country.capitalize(), 'Tot Deaths/1M pop'].array[0]
 
     def get_history(self, country = 'Total: '):
-        self.url = 'https://www.worldometers.info/coronavirus/'
+        url = 'https://www.worldometers.info/coronavirus/'
 
         if country != 'Total: ':
-            self.url += 'country/' + country
+            url += 'country/' + country
 
         req = urllib.request.urlopen(urllib.request.Request(
-            self.url,
+            url,
             data = None,
             headers = {
                 'User-Agent': 'Mozilla/5.0' # Worldometer doesn't like us
@@ -61,10 +61,17 @@ class CoronaStats:
         ))
         page = BeautifulSoup(req.read().decode('utf8'), 'html.parser')
 
-        js_obj1 = re.match(r"[\s\S]*?Highcharts\.chart\('coronavirus-cases-linear', ([\s\S]*?)\);", page.find_all('div', class_ = 'graph_row')[0].script.text).group(1)
+        if country == 'Total: ':
+            div1 = page.find_all('div', class_ = 'col-md-6')[2].script.text
+            div2 = page.find_all('div', class_ = 'col-md-6')[3].script.text
+        else:
+            div1 = page.find_all('div', class_ = 'graph_row')[0].script.text
+            div2 = page.find_all('div', class_ = 'graph_row')[3].script.text
+
+        js_obj1 = re.match(r"[\s\S]*?Highcharts\.chart\('coronavirus-cases-linear', ([\s\S]*?)\);", div1).group(1)
         graph1 = demjson.decode(js_obj1)
 
-        js_obj2 = re.match(r"[\s\S]*?Highcharts\.chart\('coronavirus-deaths-linear', ([\s\S]*?)\);", page.find_all('div', class_ = 'graph_row')[3].script.text).group(1)
+        js_obj2 = re.match(r"[\s\S]*?Highcharts\.chart\('coronavirus-deaths-linear', ([\s\S]*?)\);", div2).group(1)
         graph2 = demjson.decode(js_obj2)
 
         dates = [datetime.strptime(i + ' {}'.format(datetime.today().year), '%b %d %Y') for i in graph1['xAxis']['categories']]
